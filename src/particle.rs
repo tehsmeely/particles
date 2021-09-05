@@ -1,7 +1,23 @@
 use crate::grid::{Direction, Grid, GridPosition};
 use ggez::graphics::Color;
 use ggez::{graphics, Context, GameResult};
+use rand::rngs::ThreadRng;
+use rand::seq::SliceRandom;
 
+#[derive(Debug)]
+pub enum ParticleType {
+    Water = 1,
+    Sand = 2,
+}
+
+impl ParticleType {
+    fn as_colour(&self) -> Color {
+        match self {
+            Self::Water => [0.0, 0.0, 1.0, 1.0].into(),
+            Self::Sand => [1.0, 0.741, 0.291, 1.0].into(),
+        }
+    }
+}
 #[derive(Debug)]
 pub struct Particle {
     pos: GridPosition,
@@ -10,19 +26,36 @@ pub struct Particle {
 }
 
 impl Particle {
-    pub fn new(pos: GridPosition, colour: Color) -> Self {
+    pub fn new(pos: GridPosition, type_: ParticleType) -> Self {
         Self {
             pos,
-            type_: 1,
-            colour,
+            colour: type_.as_colour(),
+            type_: type_ as usize,
         }
     }
-    pub fn update(&mut self, grid: &mut Grid) {
-        if grid.can_move(Direction::Down, self.pos) {
-            grid.grid[self.pos.into_grid_coord()] = 0;
-            self.pos.move_in_direction(Direction::Down);
-            grid.grid[self.pos.into_grid_coord()] = self.type_;
+    pub fn update(&mut self, grid: &mut Grid, rng: &mut ThreadRng) {
+        if grid.can_move(&Direction::Down, self.pos, self.type_) {
+            self.move_(grid, &Direction::Down);
+        } else {
+            let dirs = {
+                let mut dirs = vec![Direction::DownLeft, Direction::DownRight];
+                dirs.shuffle(rng);
+                dirs
+            };
+            for dir in dirs.iter() {
+                if grid.can_move(dir, self.pos, self.type_) {
+                    self.move_(grid, dir);
+                    break;
+                }
+            }
         }
+    }
+
+    fn move_(&mut self, grid: &mut Grid, dir: &Direction) {
+        // Assumes move is valid
+        grid.grid[self.pos.into_grid_coord()] = 0;
+        self.pos.move_in_direction(dir);
+        grid.grid[self.pos.into_grid_coord()] = self.type_ as usize;
     }
 
     pub fn draw(&self, ctx: &mut Context, grid: &Grid) -> GameResult<()> {

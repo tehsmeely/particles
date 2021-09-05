@@ -2,11 +2,12 @@ mod grid;
 mod particle;
 
 use crate::grid::{Grid, WorldPosition};
-use crate::particle::Particle;
+use crate::particle::{Particle, ParticleType};
 use ggez::conf::WindowMode;
 use ggez::event::{self, EventHandler, MouseButton};
 use ggez::graphics::{self, Color};
 use ggez::{Context, ContextBuilder, GameResult};
+use rand::rngs::ThreadRng;
 
 fn main() {
     let grid = Grid::new((32, 32), (30, 30));
@@ -27,13 +28,16 @@ fn main() {
 struct GameState {
     grid: Grid,
     particles: Vec<Particle>,
+    rng: ThreadRng,
 }
 
 impl GameState {
     pub fn new(_ctx: &mut Context, grid: Grid) -> GameState {
+        let rng = rand::thread_rng();
         GameState {
             grid,
             particles: vec![],
+            rng,
         }
     }
 }
@@ -41,7 +45,7 @@ impl GameState {
 impl EventHandler<ggez::GameError> for GameState {
     fn update(&mut self, _ctx: &mut Context) -> GameResult<()> {
         for mut particle in self.particles.iter_mut() {
-            particle.update(&mut self.grid);
+            particle.update(&mut self.grid, &mut self.rng);
         }
         Ok(())
     }
@@ -57,13 +61,13 @@ impl EventHandler<ggez::GameError> for GameState {
     fn mouse_button_down_event(&mut self, _ctx: &mut Context, button: MouseButton, x: f32, y: f32) {
         println!("Mouse Down: {},{} ({:?})", x, y, button);
         let pos = WorldPosition::new(x as i32, y as i32).to_grid(&self.grid);
-        let mut colour = match button {
-            MouseButton::Left => Some([0.0, 0.0, 1.0, 1.0].into()),
-            MouseButton::Right => Some([1.0, 0.0, 0.0, 1.0].into()),
+        let mut type_ = match button {
+            MouseButton::Left => Some(ParticleType::Water),
+            MouseButton::Right => Some(ParticleType::Sand),
             _ => None,
         };
-        if let Some(colour) = colour.take() {
-            let particle = Particle::new(pos, colour);
+        if let Some(type_) = type_.take() {
+            let particle = Particle::new(pos, type_);
             self.particles.push(particle);
         }
     }

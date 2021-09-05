@@ -1,4 +1,4 @@
-use crate::particle::Particle;
+use crate::particle::{Particle, ParticleType};
 use array2d::Array2D;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -7,6 +7,8 @@ pub enum Direction {
     Down,
     Left,
     Right,
+    DownRight,
+    DownLeft,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -20,16 +22,24 @@ impl GridPosition {
         Self { x, y }
     }
 
-    pub fn move_in_direction(&mut self, dir: Direction) {
+    pub fn move_in_direction(&mut self, dir: &Direction) {
         match dir {
             Direction::Up => self.y -= 1,
             Direction::Down => self.y += 1,
             Direction::Left => self.x -= 1,
             Direction::Right => self.x += 1,
+            Direction::DownRight => {
+                self.x += 1;
+                self.y += 1
+            }
+            Direction::DownLeft => {
+                self.x -= 1;
+                self.y += 1
+            }
         }
     }
 
-    pub fn new_in_direction(&self, dir: Direction) -> Self {
+    pub fn new_in_direction(&self, dir: &Direction) -> Self {
         let mut new = self.clone();
         new.move_in_direction(dir);
         new
@@ -97,12 +107,12 @@ impl Grid {
         }
     }
 
-    pub fn can_move(&self, direction: Direction, pos: GridPosition) -> bool {
+    pub fn can_move(&self, direction: &Direction, pos: GridPosition, type_: usize) -> bool {
         let new_pos = pos.new_in_direction(direction);
         let in_x_bounds = new_pos.x >= 0 && new_pos.x < self.grid_size.0;
         let in_y_bounds = new_pos.y >= 0 && new_pos.y < self.grid_size.1;
         if in_x_bounds && in_y_bounds {
-            self.grid[new_pos.into_grid_coord()] == 0
+            self.grid[new_pos.into_grid_coord()] < type_
         } else {
             false
         }
