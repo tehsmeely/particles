@@ -23,6 +23,7 @@ pub struct Particle {
     pos: GridPosition,
     type_: usize,
     colour: Color,
+    last_move: Option<Direction>,
 }
 
 impl Particle {
@@ -31,11 +32,13 @@ impl Particle {
             pos,
             colour: type_.as_colour(),
             type_: type_ as usize,
+            last_move: None,
         }
     }
     pub fn update(&mut self, grid: &mut Grid, rng: &mut ThreadRng) {
         if grid.can_move(&Direction::Down, self.pos, self.type_) {
             self.move_(grid, &Direction::Down);
+            self.last_move = Some(Direction::Down);
         } else {
             let dirs = {
                 let mut dirs = vec![Direction::DownLeft, Direction::DownRight];
@@ -45,7 +48,25 @@ impl Particle {
             for dir in dirs.iter() {
                 if grid.can_move(dir, self.pos, self.type_) {
                     self.move_(grid, dir);
-                    break;
+                    self.last_move = Some(Direction::Down);
+                    return;
+                }
+            }
+            let experimental_move = false;
+            if experimental_move && self.type_ == (ParticleType::Water as usize) {
+                let direction = match &self.last_move {
+                    &Some(Direction::Left) => Direction::Left,
+                    &Some(Direction::Right) => Direction::Right,
+                    _ => {
+                        let mut dirs = vec![Direction::Left, Direction::Right];
+                        dirs.shuffle(rng);
+                        dirs[0]
+                    }
+                };
+                if grid.can_move(&direction, self.pos, self.type_) {
+                    self.move_(grid, &direction);
+                    self.last_move = Some(direction);
+                    return;
                 }
             }
         }
