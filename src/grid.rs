@@ -45,6 +45,9 @@ impl GridPosition {
         new
     }
 
+    pub fn to_world_(&self, cell_size: &(i32, i32)) -> WorldPosition {
+        WorldPosition::new(self.x * cell_size.0, self.y * cell_size.1)
+    }
     pub fn to_world(&self, grid: &Grid) -> WorldPosition {
         WorldPosition::new(self.x * grid.cell_size.0, self.y * grid.cell_size.1)
     }
@@ -55,6 +58,12 @@ impl GridPosition {
 
     pub fn into_grid_coord(&self) -> (usize, usize) {
         (self.x as usize, self.y as usize)
+    }
+
+    pub fn is_in_bounds(&self, grid_size: &(i32, i32)) -> bool {
+        let x = self.x >= 0 && self.x < grid_size.0;
+        let y = self.y >= 0 && self.y < grid_size.1;
+        x && y
     }
 }
 impl From<(i32, i32)> for GridPosition {
@@ -73,6 +82,10 @@ impl WorldPosition {
     pub fn new(x: i32, y: i32) -> Self {
         Self { x, y }
     }
+
+    pub fn to_grid_(&self, cell_size: &(i32, i32)) -> GridPosition {
+        GridPosition::new(self.x as i32 / cell_size.0, self.y as i32 / cell_size.1)
+    }
     pub fn to_grid(&self, grid: &Grid) -> GridPosition {
         GridPosition::new(
             self.x as i32 / grid.cell_size.0,
@@ -80,6 +93,9 @@ impl WorldPosition {
         )
     }
 
+    pub fn to_rect_(&self, cell_size: &(i32, i32)) -> ggez::graphics::Rect {
+        ggez::graphics::Rect::new_i32(self.x, self.y, cell_size.0, cell_size.1)
+    }
     pub fn to_rect(&self, grid: &Grid) -> ggez::graphics::Rect {
         ggez::graphics::Rect::new_i32(self.x, self.y, grid.cell_size.0, grid.cell_size.1)
     }

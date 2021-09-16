@@ -1,8 +1,14 @@
 mod grid;
 mod particle;
+mod pixel;
+mod pixel_grid;
+
+#[macro_use]
+extern crate num_derive;
 
 use crate::grid::{Grid, WorldPosition};
 use crate::particle::{Particle, ParticleType};
+use crate::pixel::{MaterialType, Pixel, UnpackedPixel};
 use ggez::conf::WindowMode;
 use ggez::event::{self, EventHandler, MouseButton};
 use ggez::graphics::{self, Color};
@@ -10,7 +16,7 @@ use ggez::{Context, ContextBuilder, GameResult};
 use rand::rngs::ThreadRng;
 
 fn main() {
-    let grid = Grid::new((32, 32), (30, 30));
+    let grid = pixel_grid::Grid::new((32, 32), (30, 30));
     let window_mode = WindowMode::default().dimensions(
         (grid.cell_size.0 * grid.grid_size.0) as f32,
         (grid.cell_size.1 * grid.grid_size.1) as f32,
@@ -26,14 +32,14 @@ fn main() {
 }
 
 struct GameState {
-    grid: Grid,
+    grid: pixel_grid::Grid,
     particles: Vec<Particle>,
     mouse_state: MouseState,
     rng: ThreadRng,
 }
 
 impl GameState {
-    pub fn new(_ctx: &mut Context, grid: Grid) -> GameState {
+    pub fn new(_ctx: &mut Context, grid: pixel_grid::Grid) -> GameState {
         let rng = rand::thread_rng();
         GameState {
             grid,
@@ -49,16 +55,40 @@ impl GameState {
         if self.mouse_state.right {
             self.spawn_particle(ctx, ParticleType::Sand)
         }
+        self.grid.update();
+        /*
         for mut particle in self.particles.iter_mut() {
             particle.update(&mut self.grid, &mut self.rng);
         }
+         */
         Ok(())
     }
-
     fn spawn_particle(&mut self, ctx: &mut Context, type_: ParticleType) {
         let pos = {
             let mouse_pos = ggez::input::mouse::position(ctx);
-            WorldPosition::new(mouse_pos.x as i32, mouse_pos.y as i32).to_grid(&self.grid)
+            WorldPosition::new(mouse_pos.x as i32, mouse_pos.y as i32)
+                .to_grid_(&self.grid.cell_size)
+        };
+        let material_type = match type_ {
+            ParticleType::Sand => MaterialType::Sand,
+            ParticleType::Water => MaterialType::Water,
+        };
+        let pixel = {
+            let unpacked = UnpackedPixel {
+                material_type,
+                fill_level: 0u8,
+            };
+            Pixel::pack(unpacked)
+        };
+        println!("Spawn particle {:?} at {:?}", pixel, pos);
+        self.grid.grid[pos.into_grid_coord()] = pixel;
+    }
+
+    fn spawn_particle_depr(&mut self, ctx: &mut Context, type_: ParticleType) {
+        let pos = {
+            let mouse_pos = ggez::input::mouse::position(ctx);
+            WorldPosition::new(mouse_pos.x as i32, mouse_pos.y as i32)
+                .to_grid_(&self.grid.cell_size)
         };
         let particle = Particle::new(pos, type_);
         self.particles.push(particle);
@@ -90,9 +120,13 @@ impl EventHandler<ggez::GameError> for GameState {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         graphics::clear(ctx, Color::WHITE);
+        self.grid.draw(ctx);
+        /*
         for particle in self.particles.iter() {
             particle.draw(ctx, &self.grid);
         }
+
+         */
         graphics::present(ctx)
     }
 
